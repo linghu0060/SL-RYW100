@@ -31,3 +31,6 @@
 
 /Debug
 /ipch
+/*.opensdf
+/*.aps
+/*.sdf

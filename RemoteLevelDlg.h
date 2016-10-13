@@ -22,7 +22,7 @@ public:
 
 // 实现
 protected:
-	HICON m_hIcon;
+	HICON       m_hIcon;
 
 	// 生成的消息映射函数
 	virtual BOOL OnInitDialog();
@@ -39,9 +39,10 @@ public:
 protected:
     afx_msg LRESULT OnLevelMsg(WPARAM wParam, LPARAM lParam);
 protected:
-    CLevelMeter m_LevelMeter;
+    CLevelMeter     m_LevelMeter;
 public:
-    CString m_LevelID[4];
-    CString m_LevelTime[4];
-    CString m_LevelData[4];
+    CString         m_LevelID[4];
+    CString         m_LevelTime[4];
+    CString         m_LevelData[4];
+    CProgressCtrl   m_Progress[4];
 };

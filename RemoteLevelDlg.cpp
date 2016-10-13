@@ -59,18 +59,26 @@ CRemoteLevelDlg::CRemoteLevelDlg(CWnd* pParent /*=NULL*/)
 void CRemoteLevelDlg::DoDataExchange(CDataExchange* pDX)
 {
     CDialogEx::DoDataExchange(pDX);
+
     DDX_Text(pDX, IDC_EDIT1,   m_LevelID[0]);
     DDX_Text(pDX, IDC_EDIT1_1, m_LevelTime[0]);
     DDX_Text(pDX, IDC_EDIT1_2, m_LevelData[0]);
+    DDX_Control(pDX, IDC_PROGRESS1, m_Progress[0]);
+
     DDX_Text(pDX, IDC_EDIT2,   m_LevelID[1]);
     DDX_Text(pDX, IDC_EDIT2_1, m_LevelTime[1]);
     DDX_Text(pDX, IDC_EDIT2_2, m_LevelData[1]);
+    DDX_Control(pDX, IDC_PROGRESS2, m_Progress[1]);
+
     DDX_Text(pDX, IDC_EDIT3,   m_LevelID[2]);
     DDX_Text(pDX, IDC_EDIT3_1, m_LevelTime[2]);
     DDX_Text(pDX, IDC_EDIT3_2, m_LevelData[2]);
+    DDX_Control(pDX, IDC_PROGRESS3, m_Progress[2]);
+
     DDX_Text(pDX, IDC_EDIT4,   m_LevelID[3]);
     DDX_Text(pDX, IDC_EDIT4_1, m_LevelTime[3]);
     DDX_Text(pDX, IDC_EDIT4_2, m_LevelData[3]);
+    DDX_Control(pDX, IDC_PROGRESS4, m_Progress[3]);
 }
 
 BEGIN_MESSAGE_MAP(CRemoteLevelDlg, CDialogEx)
@@ -115,6 +123,12 @@ BOOL CRemoteLevelDlg::OnInitDialog()
 
 	// TODO: 在此添加额外的初始化代码
     m_LevelMeter.Start(2317, this->GetSafeHwnd());
+    for(int i = 0;  i < 4;  i++) {
+//        ::SendMessage(m_Progress[i].GetSafeHwnd(), PBM_SETBKCOLOR,  0, RGB(255,255,255));
+//        ::SendMessage(m_Progress[i].GetSafeHwnd(), PBM_SETBARCOLOR, 0, RGB(47, 162,219));
+        m_Progress[i].SetRange32(0, 1000);
+        m_Progress[i].SetPos(1000);
+    }
 
 //	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
     GetDlgItem(IDC_BTN_EXIT)->SetFocus();
@@ -192,34 +206,39 @@ void CRemoteLevelDlg::OnClose()
 
 LRESULT CRemoteLevelDlg::OnLevelMsg(WPARAM wParam, LPARAM lParam)
 {
+    int       i;
     LevelMsg* lpMsg = (LevelMsg*)wParam;
     CString   LevelID, LevelTime, LevelData;
     CTime     ctime(lpMsg->m_time);
+    int       prgPos = (int)(((1.73 - lpMsg->m_LevelVal) * 1000) / 1.73);
     LevelID.Format(_T("%u号液位计"), lpMsg->m_LevelID);
     LevelData.Format(_T("%.2f米"), 1.73 - lpMsg->m_LevelVal);
     LevelTime = ctime.Format(_T("%Y-%m-%d %H:%M:%S"));
     delete lpMsg;
 
     UpdateData(TRUE);
-    for(int i = 0;  i < 4;  i++ )
+
+    for(i = 0;  i < 4;  i++ )
     {
         if( m_LevelID[i] == LevelID ) {
             m_LevelTime[i] = LevelTime;
             m_LevelData[i] = LevelData;
+            m_Progress[i].SetPos(prgPos);
             goto RETURN;
         }
     }
-    for(int i = 0;  i < 4;  i++)
+    for(i = 0;  i < 4;  i++)
     {
         if( m_LevelID[i] == _T("未连接") ) {
             m_LevelID[i]   = LevelID;
             m_LevelTime[i] = LevelTime;
             m_LevelData[i] = LevelData;
+            m_Progress[i].SetPos(prgPos);
             goto RETURN;
         }
     }
-
   RETURN:
+
     UpdateData(FALSE);
     return( 0 );
 }
