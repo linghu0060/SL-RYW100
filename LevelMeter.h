@@ -10,7 +10,7 @@ struct LevelMsg
 {
     time_t      m_time;                     // Time  for Level Meter
     UINT        m_LevelID;                  // ID    for Level Meter
-    float       m_LevelVal;                 // Value for Level Meter
+    int         m_LevelVal;                 // Value for Level Meter(mm)
 };
 
 
@@ -83,14 +83,14 @@ protected:
 
 protected:
     char DataCheck(char *buff)
-    {                                   // 数据校验
+    {                                                   // 数据校验
         return( buff[0] + buff[1] + buff[2] + buff[3] + buff[4] );
     }
     void DataCmd1(char *buff)
     {
         buff[0] = (char)0xFC;
         buff[1] = (char)0x01;
-        buff[2] = (char)0xB2;           // 传感器工作指令
+        buff[2] = (char)0xB2;                           // 传感器工作指令
         buff[3] = (char)0x00;
         buff[4] = (char)0x00;
         buff[5] = DataCheck(buff);
@@ -99,22 +99,22 @@ protected:
     {
         buff[0] = (char)0xFC;
         buff[1] = (char)0x01;
-        buff[2] = (char)0xC3;           // 传感器回传指令
+        buff[2] = (char)0xC3;                           // 传感器回传指令
         buff[3] = (char)0x00;
         buff[4] = (char)0x00;
         buff[5] = DataCheck(buff);
     }
-    float DataRev1(char *buff)
+    int DataRev1(char *buff)
     {
         if(   (buff[0] != (char)0xFC) 
             | (buff[1] != (char)0x01)
-            | (buff[2] != (char)0xD4)   // 传感器回传信息
+            | (buff[2] != (char)0xD4)                   // 传感器回传信息
             | (buff[5] != DataCheck(buff))
           )
         {
             return( -1 );
         }
-        return( ((UINT)buff[3] * 100 + (UINT)buff[4]) / (float)1000 );
+        return( (UINT)buff[3] * 100 + (UINT)buff[4] );  // 距离数据(单位mm)
     }
 };
 

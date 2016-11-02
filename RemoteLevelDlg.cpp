@@ -7,6 +7,9 @@
 #include "RemoteLevelDlg.h"
 #include "afxdialogex.h"
 
+#pragma comment(lib, "winmm.lib")
+#include <Mmsystem.h>
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -51,9 +54,9 @@ CRemoteLevelDlg::CRemoteLevelDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(CRemoteLevelDlg::IDD, pParent)
 {
     m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
-    m_LevelID[0]   = m_LevelID[1]   = m_LevelID[2]   = m_LevelID[3]   = _T("未连接");
-    m_LevelTime[0] = m_LevelTime[1] = m_LevelTime[2] = m_LevelTime[3] = _T("");
-    m_LevelData[0] = m_LevelData[1] = m_LevelData[2] = m_LevelData[3] = _T("无数据");
+    m_LevelID[0]   = m_LevelID[1]   = m_LevelID[2]   = m_LevelID[3]   = LEVEL_ID_DEF;
+    m_LevelTime[0] = m_LevelTime[1] = m_LevelTime[2] = m_LevelTime[3] = LEVEL_TIME_DEF;
+    m_LevelData[0] = m_LevelData[1] = m_LevelData[2] = m_LevelData[3] = LEVEL_DATA_DEF;
 }
 
 void CRemoteLevelDlg::DoDataExchange(CDataExchange* pDX)
@@ -87,6 +90,7 @@ BEGIN_MESSAGE_MAP(CRemoteLevelDlg, CDialogEx)
 	ON_WM_QUERYDRAGICON()
     ON_WM_CLOSE()
     ON_WM_LEVEL_MSG(OnLevelMsg)
+    ON_WM_TIMER()
 END_MESSAGE_MAP()
 
 
@@ -122,13 +126,21 @@ BOOL CRemoteLevelDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 
 	// TODO: 在此添加额外的初始化代码
-    m_LevelMeter.Start(2317, this->GetSafeHwnd());
-    for(int i = 0;  i < 4;  i++) {
-//        ::SendMessage(m_Progress[i].GetSafeHwnd(), PBM_SETBKCOLOR,  0, RGB(255,255,255));
-//        ::SendMessage(m_Progress[i].GetSafeHwnd(), PBM_SETBARCOLOR, 0, RGB(47, 162,219));
-        m_Progress[i].SetRange32(0, 1000);
-        m_Progress[i].SetPos(1000);
+    m_LevelMeter.Start(2317, this->GetSafeHwnd());  // 液位测量服务启动
+    for(int i = 0;  i < LEVEL_SHOW_MAX;  i++)
+    {
+        // 设置进度条颜色、范围
+        ::SendMessage(m_Progress[i].GetSafeHwnd(), PBM_SETBKCOLOR,  0, RGB(255,255,255));
+        ::SendMessage(m_Progress[i].GetSafeHwnd(), PBM_SETBARCOLOR, 0, RGB(47, 162,219));
+        m_Progress[i].SetRange32(0, 100);
+        m_Progress[i].SetPos(100);
+
+        // 初始化警报信息
+        CString strTemp;  strTemp.Format(_T("Level.%u"), i + 1);
+        m_LevelPreVal[i] = ::GetPrivateProfileInt(strTemp, _T("arHeigth"), 1000, _T(".//Config.ini")) + 1;
+        m_LevelAram[i]   = FALSE;
     }
+    SetTimer(ID_TIMER_ALARM, 1000, NULL);           // 警报处理定时器
 
 //	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
     GetDlgItem(IDC_BTN_EXIT)->SetFocus();
@@ -204,42 +216,101 @@ void CRemoteLevelDlg::OnClose()
     EndDialog(IDCANCEL);
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+// 消息处理函数--定时器
+void CRemoteLevelDlg::OnTimer(UINT_PTR nIDEvent)
+{
+    // TODO: 在此添加消息处理程序代码和/或调用默认值
+    if( nIDEvent == ID_TIMER_ALARM )    // 警报处理定时器
+    {
+        static BOOL s_bfPlay = FALSE;
+        int         i;
+
+        for( i = 0;  i < LEVEL_SHOW_MAX;  i++ )
+        {
+            if( m_LevelAram[i] && !s_bfPlay ) {     // 有液位警报
+                ::PlaySound( _T(".//Alarm.wav"), NULL, 
+                             SND_FILENAME | SND_ASYNC | SND_LOOP | SND_NODEFAULT
+                           );                       // ---播放警报音
+                s_bfPlay = TRUE;
+                break;
+            }
+        }
+        if( (i >= LEVEL_SHOW_MAX) && s_bfPlay ) {   // 无液位警报
+            ::PlaySound(NULL, NULL, 0);             // ---停止播放警报音
+            s_bfPlay = FALSE;
+        }
+    }
+
+    CDialogEx::OnTimer(nIDEvent);
+}
+
+// 警报消息线程函数
+UINT CRemoteLevelDlg::MessageThread(LPVOID pParam)
+{
+    CString  strTemp;
+
+    strTemp.Format(_T("%u号液位低于最低数"), (int)pParam);
+    ::MessageBox( NULL, strTemp, _T("低液位警报"), 
+                  MB_OK | MB_ICONERROR | MB_SYSTEMMODAL | MB_SETFOREGROUND
+                );
+
+    return( 0 );
+}
+
+// 消息处理函数--液位
 LRESULT CRemoteLevelDlg::OnLevelMsg(WPARAM wParam, LPARAM lParam)
 {
+    CString   strTemp;
     int       i;
-    LevelMsg* lpMsg = (LevelMsg*)wParam;
-    CString   LevelID, LevelTime, LevelData;
-    CTime     ctime(lpMsg->m_time);
-    int       prgPos = (int)(((1.73 - lpMsg->m_LevelVal) * 1000) / 1.73);
-    LevelID.Format(_T("%u号液位计"), lpMsg->m_LevelID);
-    LevelData.Format(_T("%.2f米"), 1.73 - lpMsg->m_LevelVal);
-    LevelTime = ctime.Format(_T("%Y-%m-%d %H:%M:%S"));
-    delete lpMsg;
-
+    LevelMsg* lpMsg    = (LevelMsg*)wParam;
+    int       levelVal = lpMsg->m_LevelVal;
+    UINT      levelID  = lpMsg->m_LevelID;
+    CTime     levelTime(lpMsg->m_time);
+    delete    lpMsg;
     UpdateData(TRUE);
 
-    for(i = 0;  i < 4;  i++ )
-    {
-        if( m_LevelID[i] == LevelID ) {
-            m_LevelTime[i] = LevelTime;
-            m_LevelData[i] = LevelData;
-            m_Progress[i].SetPos(prgPos);
-            goto RETURN;
+    for(strTemp.Format(LEVEL_ID_FMT, levelID), i = 0;  i < LEVEL_SHOW_MAX;  i++)
+    {                                               // 查找上次显示位置
+        if( m_LevelID[i] == strTemp ) {
+            break;
         }
     }
-    for(i = 0;  i < 4;  i++)
-    {
-        if( m_LevelID[i] == _T("未连接") ) {
-            m_LevelID[i]   = LevelID;
-            m_LevelTime[i] = LevelTime;
-            m_LevelData[i] = LevelData;
-            m_Progress[i].SetPos(prgPos);
-            goto RETURN;
+    if( i >= LEVEL_SHOW_MAX ) {                     // 未找到上次显示位置
+        for(i = 0;  i < LEVEL_SHOW_MAX;  i++)
+        {                                           // 查找未使用显示位置
+            if( m_LevelID[i] == LEVEL_ID_DEF ) {
+                m_LevelID[i] = strTemp;             // ---显示液位计编号
+                m_Progress[i].ShowWindow(SW_SHOW);  // ---进度条显示可见
+                break;
+            }
         }
     }
-  RETURN:
+
+    if( i < LEVEL_SHOW_MAX )                        // 有效使用位置
+    {
+        strTemp.Format(_T("Level.%u"), levelID);                    // 加载容器高度与最低高度配置
+        int ctHeight = ::GetPrivateProfileInt(strTemp, _T("ctHeight"), 2000, _T(".//Config.ini"));
+        int arHeigth = ::GetPrivateProfileInt(strTemp, _T("arHeigth"), 1000, _T(".//Config.ini"));
+        int cbtValue = ::GetPrivateProfileInt(strTemp, _T("cbtValue"),    0, _T(".//Config.ini"));
+        levelVal     = ctHeight + cbtValue - levelVal;              // 有效液位数值(单位mm)
+
+        strTemp.Format(LEVEL_DATA_FMT, ((float)levelVal) / 1000);
+        m_LevelData[i] = strTemp;                                   // 显示液位数值
+        m_LevelTime[i] = levelTime.Format(LEVEL_TIME_FMT);          // 显示测量时间
+        m_Progress[i].SetPos( (levelVal * 25) / (ctHeight / 4) );   // 显示液位指示进度条
+        
+        m_LevelAram[i] = (levelVal < arHeigth);                     // 液位警报状态
+        if( (m_LevelPreVal[i] >= arHeigth) && m_LevelAram[i] ) {
+          //::MessageBeep(MB_ICONERROR);
+            AfxBeginThread(MessageThread, (LPVOID)levelID);         // 显示低液位警报对话框
+        }
+        m_LevelPreVal[i] = levelVal;                                // 前一个液位测量数值
+    }
 
     UpdateData(FALSE);
     return( 0 );
 }
+
 

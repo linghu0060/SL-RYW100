@@ -119,7 +119,7 @@ DWORD CLevelMeter::ProcMeter(SOCKET sockConn)
         goto RETURN;
     }
     UINT nLevelID = recvBuf[10] - '0';
-    float level;
+    int  level;
 
     for(; !m_nExit;)
     {
