@@ -31,6 +31,10 @@
 
 /Debug
 /ipch
+/RemoteLevel.vtg
+/RemoteLevel.vpj
+/RemoteLevel.vpw
+/RemoteLevel.vpwhist
 /*.opensdf
 /*.aps
 /*.sdf

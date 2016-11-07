@@ -250,8 +250,9 @@ void CRemoteLevelDlg::OnTimer(UINT_PTR nIDEvent)
 UINT CRemoteLevelDlg::MessageThread(LPVOID pParam)
 {
     CString  strTemp;
+    CTime    time = CTime::GetCurrentTime();
 
-    strTemp.Format(_T("%u号液位低于最低数"), (int)pParam);
+    strTemp.Format(_T("%s\n%u号液位低于最低数"), (LPCTSTR)time.Format(LEVEL_TIME_FMT), (int)pParam);
     ::MessageBox( NULL, strTemp, _T("低液位警报"), 
                   MB_OK | MB_ICONERROR | MB_SYSTEMMODAL | MB_SETFOREGROUND
                 );
@@ -299,6 +300,7 @@ LRESULT CRemoteLevelDlg::OnLevelMsg(WPARAM wParam, LPARAM lParam)
         strTemp.Format(LEVEL_DATA_FMT, ((float)levelVal) / 1000);
         m_LevelData[i] = strTemp;                                   // 显示液位数值
         m_LevelTime[i] = levelTime.Format(LEVEL_TIME_FMT);          // 显示测量时间
+        m_Progress[i].SetWindowText(strTemp + _T("--"));
         m_Progress[i].SetPos( (levelVal * 25) / (ctHeight / 4) );   // 显示液位指示进度条
         
         m_LevelAram[i] = (levelVal < arHeigth);                     // 液位警报状态
