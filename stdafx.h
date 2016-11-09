@@ -43,7 +43,14 @@
 
 
 
+#include <Mmsystem.h>           // Multimedia API
+#pragma comment(lib, "winmm.lib")
 
+
+// #include <comdef.h>          // 初始化一下com口
+#include <GdiPlus.h>            // GDI+库
+using namespace Gdiplus;
+#pragma comment(lib,"gdiplus.lib")
 
 
 

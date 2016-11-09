@@ -23,9 +23,13 @@ public:
 // ÷ÿ–¥
 public:
 	virtual BOOL InitInstance();
+//  virtual int ExitInstance();
 
 //  µœ÷
+private:
+// 	ULONG_PTR	m_gdiplusToken;
 
+public:
 	DECLARE_MESSAGE_MAP()
 };
 

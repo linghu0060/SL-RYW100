@@ -48,6 +48,9 @@
     <ClInclude Include="CMemoryDC.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="WaterPot.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="RemoteLevel.cpp">
@@ -63,6 +66,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="TextProgressCtrl.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="WaterPot.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

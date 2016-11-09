@@ -7,9 +7,6 @@
 #include "RemoteLevelDlg.h"
 #include "afxdialogex.h"
 
-#pragma comment(lib, "winmm.lib")
-#include <Mmsystem.h>
-
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -126,19 +123,38 @@ BOOL CRemoteLevelDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 
 	// TODO: 在此添加额外的初始化代码
+    m_Image.Load(_T(".//pot.png"));                 // 透明背景图片
+    if( m_Image.GetBPP() == 32 )
+    {
+        for(int i = 0; i < m_Image.GetWidth(); i++)
+        {
+            for(int j = 0; j < m_Image.GetHeight(); j++)
+            {
+                unsigned char* pucColor = reinterpret_cast<unsigned char *>(m_Image.GetPixelAddress(i , j));
+                pucColor[0] = pucColor[0] * pucColor[3] / 255;
+                pucColor[1] = pucColor[1] * pucColor[3] / 255;
+                pucColor[2] = pucColor[2] * pucColor[3] / 255;
+            }
+        }
+    }
     m_LevelMeter.Start(2317, this->GetSafeHwnd());  // 液位测量服务启动
     for(int i = 0;  i < LEVEL_SHOW_MAX;  i++)
     {
+        // 初始化警报信息
+        CString strTemp;  strTemp.Format(_T("Level.%u"), i + 1);
+        m_ctHeight[i]    = ::GetPrivateProfileInt(strTemp, _T("ctHeigth"), 2000, _T(".//Config.ini"));
+        m_arHeigth[i]    = ::GetPrivateProfileInt(strTemp, _T("arHeigth"), 1000, _T(".//Config.ini"));
+        m_cbtValue[i]    = ::GetPrivateProfileInt(strTemp, _T("cbtValue"),    0, _T(".//Config.ini"));
+        m_LevelPreVal[i] = m_arHeigth[i] + 1;
+        m_LevelAram[i]   = FALSE;
+
         // 设置进度条颜色、范围
         ::SendMessage(m_Progress[i].GetSafeHwnd(), PBM_SETBKCOLOR,  0, RGB(255,255,255));
         ::SendMessage(m_Progress[i].GetSafeHwnd(), PBM_SETBARCOLOR, 0, RGB(47, 162,219));
-        m_Progress[i].SetRange32(0, 100);
-        m_Progress[i].SetPos(100);
-
-        // 初始化警报信息
-        CString strTemp;  strTemp.Format(_T("Level.%u"), i + 1);
-        m_LevelPreVal[i] = ::GetPrivateProfileInt(strTemp, _T("arHeigth"), 1000, _T(".//Config.ini")) + 1;
-        m_LevelAram[i]   = FALSE;
+        m_Progress[i].SetWindowText(_T("水位(米): "));
+        m_Progress[i].SetHeight((float)m_ctHeight[i] / 1000);
+        m_Progress[i].SetPos((float)m_LevelPreVal[i] / 1000);
+        m_Progress[i].SetImage(&m_Image);
     }
     SetTimer(ID_TIMER_ALARM, 1000, NULL);           // 警报处理定时器
 
@@ -186,6 +202,20 @@ void CRemoteLevelDlg::OnPaint()
 	else
 	{
 		CDialogEx::OnPaint();
+
+//  	CPaintDC dc(this); // 用于绘制的设备上下文
+//      CRect wndRect;
+//      if( m_Image != NULL )
+//      {
+//          if( m_Image.IsNull() != TRUE )
+//          {
+//              for( int i = 0;  i < LEVEL_SHOW_MAX;  i++ )
+//              {
+//                  ::GetWindowRect(m_Progress[i], &wndRect);  ScreenToClient(&wndRect);
+//                  m_Image.Draw(dc.GetSafeHdc(), wndRect);
+//              }
+//          }
+//      }
 	}
 }
 
@@ -230,7 +260,7 @@ void CRemoteLevelDlg::OnTimer(UINT_PTR nIDEvent)
         for( i = 0;  i < LEVEL_SHOW_MAX;  i++ )
         {
             if( m_LevelAram[i] && !s_bfPlay ) {     // 有液位警报
-                ::PlaySound( _T(".//Alarm.wav"), NULL, 
+                ::PlaySound( _T(".//Alarm.wav"), NULL,
                              SND_FILENAME | SND_ASYNC | SND_LOOP | SND_NODEFAULT
                            );                       // ---播放警报音
                 s_bfPlay = TRUE;
@@ -253,7 +283,7 @@ UINT CRemoteLevelDlg::MessageThread(LPVOID pParam)
     CTime    time = CTime::GetCurrentTime();
 
     strTemp.Format(_T("%s\n%u号液位低于最低数"), (LPCTSTR)time.Format(LEVEL_TIME_FMT), (int)pParam);
-    ::MessageBox( NULL, strTemp, _T("低液位警报"), 
+    ::MessageBox( NULL, strTemp, _T("低液位警报"),
                   MB_OK | MB_ICONERROR | MB_SYSTEMMODAL | MB_SETFOREGROUND
                 );
 
@@ -291,20 +321,15 @@ LRESULT CRemoteLevelDlg::OnLevelMsg(WPARAM wParam, LPARAM lParam)
 
     if( i < LEVEL_SHOW_MAX )                        // 有效使用位置
     {
-        strTemp.Format(_T("Level.%u"), levelID);                    // 加载容器高度与最低高度配置
-        int ctHeight = ::GetPrivateProfileInt(strTemp, _T("ctHeight"), 2000, _T(".//Config.ini"));
-        int arHeigth = ::GetPrivateProfileInt(strTemp, _T("arHeigth"), 1000, _T(".//Config.ini"));
-        int cbtValue = ::GetPrivateProfileInt(strTemp, _T("cbtValue"),    0, _T(".//Config.ini"));
-        levelVal     = ctHeight + cbtValue - levelVal;              // 有效液位数值(单位mm)
+        levelVal = m_ctHeight[i] + m_cbtValue[i] - levelVal;        // 有效液位数值(单位mm)
 
         strTemp.Format(LEVEL_DATA_FMT, ((float)levelVal) / 1000);
         m_LevelData[i] = strTemp;                                   // 显示液位数值
         m_LevelTime[i] = levelTime.Format(LEVEL_TIME_FMT);          // 显示测量时间
-        m_Progress[i].SetWindowText(strTemp + _T("--"));
-        m_Progress[i].SetPos( (levelVal * 25) / (ctHeight / 4) );   // 显示液位指示进度条
-        
-        m_LevelAram[i] = (levelVal < arHeigth);                     // 液位警报状态
-        if( (m_LevelPreVal[i] >= arHeigth) && m_LevelAram[i] ) {
+        m_Progress[i].SetPos((float)levelVal / 1000);               // 显示液位指示进度条
+
+        m_LevelAram[i] = (levelVal < m_arHeigth[i]);                     // 液位警报状态
+        if( (m_LevelPreVal[i] >= m_arHeigth[i]) && m_LevelAram[i] ) {
           //::MessageBeep(MB_ICONERROR);
             AfxBeginThread(MessageThread, (LPVOID)levelID);         // 显示低液位警报对话框
         }

@@ -57,7 +57,6 @@ BOOL CRemoteLevelApp::InitInstance()
 		return FALSE;
 	}
 
-
 	AfxEnableControlContainer();
 
 	// 创建 shell 管理器，以防对话框包含
@@ -72,6 +71,10 @@ BOOL CRemoteLevelApp::InitInstance()
 	// TODO: 应适当修改该字符串，
 	// 例如修改为公司或组织名
 	SetRegistryKey(_T("应用程序向导生成的本地应用程序"));
+
+// 	// GDI+ Startup
+// 	GdiplusStartupInput gdiplusStartupInput;
+// 	GdiplusStartup(&m_gdiplusToken, &gdiplusStartupInput, NULL);
 
 	CRemoteLevelDlg dlg;
 	m_pMainWnd = &dlg;
@@ -98,3 +101,12 @@ BOOL CRemoteLevelApp::InitInstance()
 	return FALSE;
 }
 
+
+
+// int CRemoteLevelApp::ExitInstance()
+// {
+// 	// GDI+ Shutdown
+// 	GdiplusShutdown(m_gdiplusToken);
+// 
+//     return CWinApp::ExitInstance();
+// }
