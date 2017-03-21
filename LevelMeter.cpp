@@ -121,19 +121,19 @@ DWORD CLevelMeter::ProcMeter(SOCKET sockConn)
     UINT nLevelID = recvBuf[10] - '0';
     int  level;
 
-    for(; !m_nExit;)
+    for( int cnt = 0;  !m_nExit;  cnt++ )
     {
-        Sleep(10);  if( m_nExit ) { break; }    Sleep(10);  if( m_nExit ) { break; }
+        for( int i = 0;  i < (100 / 10);  i++ ) {
+            if( m_nExit ) { goto RETURN; }    Sleep(10);
+        }
         DataCmd1(sendBuf);                  // 发送命令1
         if( send(sockConn, sendBuf, sizeof(sendBuf), 0) != sizeof(sendBuf) ) {
             break;
         }
-        Sleep(10);  if( m_nExit ) { break; }    Sleep(10);  if( m_nExit ) { break; }
-        Sleep(10);  if( m_nExit ) { break; }    Sleep(10);  if( m_nExit ) { break; }
-        Sleep(10);  if( m_nExit ) { break; }    Sleep(10);  if( m_nExit ) { break; }
-        Sleep(10);  if( m_nExit ) { break; }    Sleep(10);  if( m_nExit ) { break; }
-        Sleep(10);  if( m_nExit ) { break; }    Sleep(10);  if( m_nExit ) { break; }
 
+        for( int i = 0;  i < (100 / 10);  i++ ) {
+            if( m_nExit ) { goto RETURN; }    Sleep(10);
+        }
         DataCmd2(sendBuf);                  // 发送命令2
         if( send(sockConn, sendBuf, sizeof(sendBuf), 0) != sizeof(sendBuf) ) {
             break;
@@ -151,12 +151,14 @@ DWORD CLevelMeter::ProcMeter(SOCKET sockConn)
         msg->m_LevelID  = nLevelID;
         msg->m_LevelVal = level;
         if( !SendMsg(msg) ) { delete msg; } // 发送液位消息到窗口
-        
-        Sleep(10);  if( m_nExit ) { break; }    Sleep(10);  if( m_nExit ) { break; }
-        Sleep(10);  if( m_nExit ) { break; }    Sleep(10);  if( m_nExit ) { break; }
-        Sleep(10);  if( m_nExit ) { break; }    Sleep(10);  if( m_nExit ) { break; }
-        Sleep(10);  if( m_nExit ) { break; }    Sleep(10);  if( m_nExit ) { break; }
-        Sleep(10);  if( m_nExit ) { break; }    Sleep(10);  if( m_nExit ) { break; }
+
+        for( int i = 0;  i < (800 / 10);  i++ ) {
+            if( m_nExit ) { goto RETURN; }    Sleep(10);
+        }
+        if( (cnt % 4) != 3 ) { continue; }  // 每4次延时20秒
+//        for( int i = 0;  i < (20 * 1000 / 10);  i++ ) {
+//            if( m_nExit ) { goto RETURN; }    Sleep(10);
+//        }
     }
 
   RETURN:

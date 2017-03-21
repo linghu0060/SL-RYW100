@@ -71,11 +71,7 @@ BOOL CRemoteLevelApp::InitInstance()
 	// TODO: 应适当修改该字符串，
 	// 例如修改为公司或组织名
 	SetRegistryKey(_T("应用程序向导生成的本地应用程序"));
-
-// 	// GDI+ Startup
-// 	GdiplusStartupInput gdiplusStartupInput;
-// 	GdiplusStartup(&m_gdiplusToken, &gdiplusStartupInput, NULL);
-
+    
 	CRemoteLevelDlg dlg;
 	m_pMainWnd = &dlg;
 	INT_PTR nResponse = dlg.DoModal();
@@ -100,13 +96,3 @@ BOOL CRemoteLevelApp::InitInstance()
 	//  而不是启动应用程序的消息泵。
 	return FALSE;
 }
-
-
-
-// int CRemoteLevelApp::ExitInstance()
-// {
-// 	// GDI+ Shutdown
-// 	GdiplusShutdown(m_gdiplusToken);
-// 
-//     return CWinApp::ExitInstance();
-// }

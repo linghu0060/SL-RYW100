@@ -5,23 +5,16 @@
 #pragma once
 
 #include "LevelMeter.h"
-#include "TextProgressCtrl.h"
 #include "WaterPot.h"
 
 
-#define LEVEL_SHOW_MAX      4                           // 可显示的液位计最大数量
+#define LEVEL_SHOW_MAX      3                           // 可显示的液位计最大数量
 #define LEVEL_ID_DEF        _T("#号液位计")              // 默认字符串----液位计编号
 #define LEVEL_ID_FMT        _T("%u号液位计")             // 格式化字符串--液位计编号
 #define LEVEL_TIME_DEF      _T("####-##-## ##:##:##")   // 默认字符串----液位计测量时间
 #define LEVEL_TIME_FMT      _T("%Y-%m-%d %H:%M:%S")     // 格式化字符串--液位计测量时间
 #define LEVEL_DATA_DEF      _T("###米")                 // 默认字符串----液位计测量数据
 #define LEVEL_DATA_FMT      _T("%.2f米")                // 格式化字符串--液位计测量数据
-
-
-
-//class C
-
-
 
 
 // CRemoteLevelDlg 对话框
@@ -72,6 +65,6 @@ protected:
     BOOL            m_LevelAram[LEVEL_SHOW_MAX];                // 液位警报状态
 protected:
     int             m_ctHeight[LEVEL_SHOW_MAX];                 // 水罐高度
-    int             m_arHeigth[LEVEL_SHOW_MAX];                 // 报警高度
+    int             m_arHeight[LEVEL_SHOW_MAX];                 // 报警高度
     int             m_cbtValue[LEVEL_SHOW_MAX];                 // 水位校准
 };

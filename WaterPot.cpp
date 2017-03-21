@@ -2,7 +2,6 @@
 //
 
 #include "stdafx.h"
-#include "CMemoryDC.h"
 #include "WaterPot.h"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -146,78 +145,122 @@ BOOL CWaterPot::OnEraseBkgnd(CDC* pDC)
 
 void CWaterPot::OnPaint()
 {
-    CPaintDC    PaintDC(this);      // device context for painting
-    CMemoryDC   dc(&PaintDC);       // memory device context
-
     // get colors to use
     COLORREF crBarColor    = (COLORREF)( (m_crBarClr    == CLR_DEFAULT) ? ::GetSysColor(COLOR_HIGHLIGHT)  : m_crBarClr    );
     COLORREF crBarBkColor  = (COLORREF)( (m_crBarBkClr  == CLR_DEFAULT) ? ::GetSysColor(COLOR_BTNFACE)    : m_crBarBkClr  );
     COLORREF crTextColor   = (COLORREF)( (m_crTextClr   == CLR_DEFAULT) ? ::GetSysColor(COLOR_WINDOWTEXT) : m_crTextClr   );
     COLORREF crTextBkColor = (COLORREF)( (m_crTextBkClr == CLR_DEFAULT) ? ::GetSysColor(COLOR_WINDOW)     : m_crTextBkClr );
 
-    double dFraction = m_fPos / m_fHeight;
-
-    // select progress bar font if there is one, else select parent font
-    if( GetFont() )
-        dc.SelectObject(GetFont());
-    else
-        dc.SelectObject(GetParent()->GetFont());
-
-    // 擦除
-    CRect wndRect;
-    GetWindowRect(&wndRect);  ScreenToClient(&wndRect);
-    FillRect(dc, wndRect, (HBRUSH)(GetClassLong(m_hWnd, GCL_HBRBACKGROUND)));
-
-    // 绘制边框
-    CRect botRect, topRect, ClientRect;
+    double  dFraction = m_fPos / m_fHeight;
+    CRect   botRect, topRect, ClientRect;
     GetClientRect(&ClientRect);
+    if( ClientRect.Width() > 4 ) {
+        ClientRect.right -= 4;
+    } else {
+        ClientRect.right  = 0;
+    }
+    if( ClientRect.Height() > 4 ) {
+        ClientRect.bottom -= 4;
+    } else {
+        ClientRect.bottom  = 0;
+    }
     botRect = topRect = ClientRect;
-//  DrawEdge(dc, ClientRect, EDGE_SUNKEN, BF_ADJUST | BF_RECT | BF_FLAT);
-
-    // 绘制液位
     botRect.top = botRect.bottom - (int)((botRect.Height()) * dFraction);
     topRect.bottom = botRect.top;
-    dc.FillSolidRect(botRect, crBarColor);
-    dc.FillSolidRect(topRect, crBarBkColor);
 
-    // draw text if needed
-    CString str;  GetWindowText(str);
-    if(m_bShowPercent) {
-        str.AppendFormat(_T("%.2f/%.2f(%d%%)"), m_fPos, m_fHeight, (int)((dFraction * 100.0) + 0.5));
-    }
-    if( str.GetLength() )
-    {
-        CSize szText = dc.GetOutputTextExtent(str);
-        CPoint ptStart;
-        if( topRect.Height() >= szText.cy ) {
-            ptStart.y = topRect.bottom - szText.cy;
+    {   // 绘制液位显示
+        CPaintDC    PaintDC(this);
+        CMemDC      memDC(PaintDC, this);
+        CDC        &dc = memDC.GetDC();
+
+//      DrawEdge(dc, ClientRect, EDGE_SUNKEN, BF_ADJUST | BF_RECT | BF_FLAT);
+        if( botRect.Height() && botRect.Width() ) {
+            dc.FillSolidRect(botRect, crBarColor);
         }
-        else if( botRect.Height() >= szText.cy ) {
-            ptStart.y = botRect.top;
+        if( topRect.Height() && topRect.Width() ) {
+            dc.FillSolidRect(topRect, crBarBkColor);
+        }
+    }
+
+    {   // 绘制水罐, 显示字符
+        CClientDC   PaintDC(this);
+        CMemDC      memDC(PaintDC, this);
+        CDC        &dc = memDC.GetDC();
+
+        if( (m_Image != NULL) && (m_Image->IsNull() != TRUE) )
+        {
+            CRect  wndRect;
+            GetWindowRect(&wndRect);  ScreenToClient(&wndRect);
+            m_Image->Draw(dc, wndRect);
+        }
+
+        // select progress bar font if there is one, else select parent font
+        if( GetFont() ) {
+            dc.SelectObject(GetFont());
+        } else {
+            dc.SelectObject(GetParent()->GetFont());
+        }
+
+        // draw text if needed
+
+        CString str1, str2;
+        CSize   szText1, szText2;
+        CPoint  ptStart1, ptStart2;
+        CRgn    rgn;
+        GetWindowText(str1);  if( str1.GetLength() == 0 )  str1 = _T("水位高度(米)");
+        str2.Format(_T("%.2f/%.2f -- (%d%%)"), m_fPos, m_fHeight, (int)((dFraction * 100.0) + 0.5));
+        szText1 = dc.GetOutputTextExtent(str1); 
+        szText2 = dc.GetOutputTextExtent(str2);
+
+        if( (botRect.Height() >= (szText1.cy + szText2.cy + 6 + 6)) ) {
+            ptStart1.y = botRect.top + 6;
+            ptStart2.y = ptStart1.y + szText1.cy;
+        }
+        else if( (topRect.Height() >= (szText1.cy + szText2.cy + 6 + 6)) ) {
+            ptStart1.y = topRect.bottom - szText1.cy - szText2.cy - 6;
+            ptStart2.y = ptStart1.y + szText1.cy;
         }
         else {
-            ptStart.y = ClientRect.top + ((ClientRect.Height() - szText.cy) / 2);
+            ptStart1.y = ClientRect.top + ((ClientRect.Height() - (szText1.cy + szText2.cy)) / 2);
+            ptStart2.y = ptStart1.y + szText1.cy;
         }
-        ptStart.x = ClientRect.left + ((ClientRect.Width() - szText.cx) / 2);
+        ptStart1.x = ClientRect.left + ((ClientRect.Width() - szText1.cx) / 2);
+        ptStart2.x = ClientRect.left + ((ClientRect.Width() - szText2.cx) / 2);
 
-		CRgn rgn;
-		rgn.CreateRectRgn(botRect.left, botRect.top, botRect.right, botRect.bottom);
-		dc.SelectClipRgn(&rgn);
-		dc.SetTextColor(crTextBkColor);
-		dc.ExtTextOut(ptStart.x, ptStart.y, ETO_CLIPPED, &ClientRect, str, NULL);
-		rgn.DeleteObject();
+        rgn.CreateRectRgn(ClientRect.left, ClientRect.top, ClientRect.right, ClientRect.bottom);
+        dc.SelectClipRgn(&rgn);
+        dc.SetTextColor(crTextColor);
+        dc.ExtTextOut(ptStart1.x, ptStart1.y, ETO_CLIPPED, &ClientRect, str1, NULL);
+        rgn.DeleteObject();
+        rgn.CreateRectRgn(ClientRect.left, ClientRect.top, ClientRect.right, ClientRect.bottom);
+        dc.SelectClipRgn(&rgn);
+        dc.SetTextColor(crTextColor);
+        dc.ExtTextOut(ptStart2.x, ptStart2.y, ETO_CLIPPED, &ClientRect, str2, NULL);
+        rgn.DeleteObject();
 
-		rgn.CreateRectRgn(topRect.left, topRect.top, topRect.right, topRect.bottom);
-		dc.SelectClipRgn(&rgn);
-		dc.SetTextColor(crTextColor);
-		dc.ExtTextOut(ptStart.x, ptStart.y, ETO_CLIPPED, &ClientRect, str, NULL);
-		rgn.DeleteObject();
-    }
-
-    if( m_Image != NULL ) { 
-        if( m_Image->IsNull() != TRUE ) { 
-            m_Image->Draw(dc.GetSafeHdc(), wndRect);
-        }
+//      if( str1.GetLength() )
+//      {
+//          CPoint ptStart;
+//          CRgn   rgn;
+//          CSize  szText1 = dc.GetOutputTextExtent(str1);
+// 
+//          if( (botRect.Height() >= (szText1.cy + 6))/* && (botRect.Height() > (ClientRect.Height() / 4))*/ ) {
+//              ptStart.y = botRect.top + 6;
+//          }
+//          else if( (topRect.Height() >= (szText1.cy + 6))/* && (topRect.Height() > (ClientRect.Height() / 4))*/ ) {
+//              ptStart.y = topRect.bottom - (szText1.cy + 6);
+//          }
+//          else {
+//              ptStart.y = ClientRect.top + ((ClientRect.Height() - szText1.cy) / 2);
+//          }
+//          ptStart.x = ClientRect.left + ((ClientRect.Width() - szText1.cx) / 2);
+// 
+//          rgn.CreateRectRgn(ClientRect.left, ClientRect.top, ClientRect.right, ClientRect.bottom);
+//          dc.SelectClipRgn(&rgn);
+//          dc.SetTextColor(crTextColor);
+//          dc.ExtTextOut(ptStart.x, ptStart.y, ETO_CLIPPED, &ClientRect, str1, NULL);
+//          rgn.DeleteObject();
+//      }
     }
 }
 

@@ -39,10 +39,10 @@ protected:
     void StopSocketThread(void);
 
 protected:                                  // Thread Function for Level connection
-    DWORD               ProcListen(void);   
+    DWORD               ProcListen(void);
     static DWORD WINAPI ProcListen(LPVOID lpArg);
 protected:                                  // Thread Function for Level Meter
-    DWORD               ProcMeter(SOCKET sockConn);    
+    DWORD               ProcMeter(SOCKET sockConn);
     static DWORD WINAPI ProcMeter(LPVOID lpArg);
 
 protected:
@@ -106,7 +106,7 @@ protected:
     }
     int DataRev1(char *buff)
     {
-        if(   (buff[0] != (char)0xFC) 
+        if(   (buff[0] != (char)0xFC)
             | (buff[1] != (char)0x01)
             | (buff[2] != (char)0xD4)                   // 传感器回传信息
             | (buff[5] != DataCheck(buff))
